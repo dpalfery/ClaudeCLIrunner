@@ -1,8 +1,6 @@
 # Testing Standards
 
-## Test Project Structure
-- Tests in [OutlineMCP.Tests/](mdc:OutlineMCP.Tests/)
-- Focus on: [OutlineServiceTests.cs](mdc:OutlineMCP.Tests/OutlineServiceTests.cs)
+
 
 ## Testing Requirements
 - All business logic must be covered by unit tests (xUnit recommended)

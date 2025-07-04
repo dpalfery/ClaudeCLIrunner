@@ -4,7 +4,7 @@
 - Use environment variables for sensitive data
 - Never hardcode credentials
 - Never commit sensitive data
-- Use [appsettings.json.template](mdc:OutlineMCP/appsettings.json.template) as base
+
 
 ## Input Validation
 - Validate all user input
