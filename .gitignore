@@ -424,4 +424,21 @@ FodyWeavers.xsd
 appsettings.Development.json
 appsettings.Production.json
 
+# Security: Ignore sensitive files and folders
+*.key
+*.pem
+*.pfx
+secrets/
+audit.log
+*audit*.log
+**/*secret*
+**/*credential*
+**/*password*
+.env*
+!.env.example
+
+# Security: Ignore deployment artifacts that may contain sensitive data
+*.backup.*
+deployment-config.*
+
 

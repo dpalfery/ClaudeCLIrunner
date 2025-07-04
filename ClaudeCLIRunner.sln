@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCLIRunner", "ClaudeCL
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCLIRunner.Tests", "tests\ClaudeCLIRunner.Tests\ClaudeCLIRunner.Tests.csproj", "{81B35BD1-677A-49B3-B3D5-3DF1FA9C3C25}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeCLIRunner.Tests", "ClaudeCLIRunner.Tests\ClaudeCLIRunner.Tests.csproj", "{81B35BD1-677A-49B3-B3D5-3DF1FA9C3C25}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
