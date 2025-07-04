@@ -1,0 +1,268 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - infrastructure/*
+      - azure-pipelines-infrastructure.yml
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infrastructure/*
+      - azure-pipelines-infrastructure.yml
+
+variables:
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: azureServiceConnectionName
+    value: 'Azure-ServiceConnection' # Update this to match your service connection name
+
+stages:
+  - stage: Validate
+    displayName: 'Validate Bicep Templates'
+    jobs:
+      - job: ValidateBicep
+        displayName: 'Validate Bicep'
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Install Bicep CLI'
+            inputs:
+              azureSubscription: $(azureServiceConnectionName)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az bicep install
+                az bicep version
+
+          - task: AzureCLI@2
+            displayName: 'Validate Bicep Template'
+            inputs:
+              azureSubscription: $(azureServiceConnectionName)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Validating main.bicep template..."
+                az bicep build --file infrastructure/main.bicep --stdout
+
+          - task: AzureCLI@2
+            displayName: 'Lint Bicep Template'
+            inputs:
+              azureSubscription: $(azureServiceConnectionName)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Linting Bicep template..."
+                az bicep build --file infrastructure/main.bicep
+
+  - stage: DeployDev
+    displayName: 'Deploy to Development'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    variables:
+      - group: 'claude-cli-dev' # Variable group containing dev environment variables
+      - name: environment
+        value: 'dev'
+      - name: resourceGroupName
+        value: 'rg-claudecli-dev'
+      - name: location
+        value: 'East US'
+    
+    jobs:
+      - deployment: DeployInfrastructure
+        displayName: 'Deploy Infrastructure'
+        pool:
+          vmImage: $(vmImageName)
+        environment: 'development'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: 'Create Resource Group'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az group create \
+                        --name $(resourceGroupName) \
+                        --location "$(location)"
+
+                - task: AzureCLI@2
+                  displayName: 'What-If Deployment'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      # Replace tokens in parameter file
+                      sed -i "s/#{azureDevOpsOrg}#/$(azureDevOpsOrg)/g" infrastructure/parameters/dev.bicepparam
+                      sed -i "s/#{azureDevOpsProject}#/$(azureDevOpsProject)/g" infrastructure/parameters/dev.bicepparam
+                      sed -i "s/#{azureDevOpsRepo}#/$(azureDevOpsRepo)/g" infrastructure/parameters/dev.bicepparam
+                      sed -i "s/#{mcpEndpoint}#/$(mcpEndpoint)/g" infrastructure/parameters/dev.bicepparam
+                      
+                      echo "Running what-if deployment..."
+                      az deployment group what-if \
+                        --resource-group $(resourceGroupName) \
+                        --template-file infrastructure/main.bicep \
+                        --parameters infrastructure/parameters/dev.bicepparam
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy Infrastructure'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Deploying infrastructure..."
+                      az deployment group create \
+                        --resource-group $(resourceGroupName) \
+                        --template-file infrastructure/main.bicep \
+                        --parameters infrastructure/parameters/dev.bicepparam \
+                        --name "claudecli-infrastructure-$(Build.BuildNumber)"
+
+                - task: AzureCLI@2
+                  displayName: 'Output Deployment Results'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Getting deployment outputs..."
+                      az deployment group show \
+                        --resource-group $(resourceGroupName) \
+                        --name "claudecli-infrastructure-$(Build.BuildNumber)" \
+                        --query properties.outputs
+
+  - stage: DeployProd
+    displayName: 'Deploy to Production'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: 'claude-cli-prod' # Variable group containing prod environment variables
+      - name: environment
+        value: 'prod'
+      - name: resourceGroupName
+        value: 'rg-claudecli-prod'
+      - name: location
+        value: 'East US'
+    
+    jobs:
+      - deployment: DeployInfrastructure
+        displayName: 'Deploy Infrastructure'
+        pool:
+          vmImage: $(vmImageName)
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: 'Create Resource Group'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az group create \
+                        --name $(resourceGroupName) \
+                        --location "$(location)"
+
+                - task: AzureCLI@2
+                  displayName: 'What-If Deployment'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      # Replace tokens in parameter file
+                      sed -i "s/#{containerImage}#/$(containerImage)/g" infrastructure/parameters/prod.bicepparam
+                      sed -i "s/#{azureDevOpsOrg}#/$(azureDevOpsOrg)/g" infrastructure/parameters/prod.bicepparam
+                      sed -i "s/#{azureDevOpsProject}#/$(azureDevOpsProject)/g" infrastructure/parameters/prod.bicepparam
+                      sed -i "s/#{azureDevOpsRepo}#/$(azureDevOpsRepo)/g" infrastructure/parameters/prod.bicepparam
+                      sed -i "s/#{mcpEndpoint}#/$(mcpEndpoint)/g" infrastructure/parameters/prod.bicepparam
+                      
+                      echo "Running what-if deployment..."
+                      az deployment group what-if \
+                        --resource-group $(resourceGroupName) \
+                        --template-file infrastructure/main.bicep \
+                        --parameters infrastructure/parameters/prod.bicepparam
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy Infrastructure'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Deploying infrastructure..."
+                      az deployment group create \
+                        --resource-group $(resourceGroupName) \
+                        --template-file infrastructure/main.bicep \
+                        --parameters infrastructure/parameters/prod.bicepparam \
+                        --name "claudecli-infrastructure-$(Build.BuildNumber)"
+
+                - task: AzureCLI@2
+                  displayName: 'Output Deployment Results'
+                  inputs:
+                    azureSubscription: $(azureServiceConnectionName)
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Getting deployment outputs..."
+                      az deployment group show \
+                        --resource-group $(resourceGroupName) \
+                        --name "claudecli-infrastructure-$(Build.BuildNumber)" \
+                        --query properties.outputs
+
+  - stage: PostDeploymentValidation
+    displayName: 'Post-Deployment Validation'
+    dependsOn: 
+      - DeployDev
+      - DeployProd
+    condition: or(succeeded('DeployDev'), succeeded('DeployProd'))
+    jobs:
+      - job: ValidateDeployment
+        displayName: 'Validate Deployment'
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Verify Resources'
+            inputs:
+              azureSubscription: $(azureServiceConnectionName)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                if [ "$(Build.SourceBranch)" == "refs/heads/develop" ]; then
+                  RG_NAME="rg-claudecli-dev"
+                else
+                  RG_NAME="rg-claudecli-prod"
+                fi
+                
+                echo "Validating resources in $RG_NAME..."
+                
+                # Check if resources exist
+                echo "Checking Key Vault..."
+                az keyvault list --resource-group $RG_NAME --query "[].name" -o tsv
+                
+                echo "Checking Storage Account..."
+                az storage account list --resource-group $RG_NAME --query "[].name" -o tsv
+                
+                echo "Checking Container Instance..."
+                az container list --resource-group $RG_NAME --query "[].name" -o tsv
+                
+                echo "Checking Log Analytics Workspace..."
+                az monitor log-analytics workspace list --resource-group $RG_NAME --query "[].name" -o tsv

@@ -1,0 +1,11 @@
+using '../main.bicep'
+
+param environment = 'prod'
+param resourcePrefix = 'claudecli'
+param location = 'East US'
+param containerImage = '#{containerImage}#'
+param azureDevOpsOrg = '#{azureDevOpsOrg}#'
+param azureDevOpsProject = '#{azureDevOpsProject}#'
+param azureDevOpsRepo = '#{azureDevOpsRepo}#'
+param mcpEndpoint = '#{mcpEndpoint}#'
+param restartPolicy = 'Always'
