@@ -1,0 +1,30 @@
+# Security Best Practices
+
+## Configuration Security
+- Use environment variables for sensitive data
+- Never hardcode credentials
+- Never commit sensitive data
+- Use [appsettings.json.template](mdc:OutlineMCP/appsettings.json.template) as base
+
+## Input Validation
+- Validate all user input
+- Use Data Annotations or FluentValidation
+- Sanitize outputs
+- Handle secrets properly
+
+## API Security
+- Use secure communication (HTTPS)
+- Validate all API responses
+- Handle rate limiting
+- Implement retry policies
+
+## Logging Security
+- Do not log sensitive data
+- Use structured logging
+- Include correlation IDs
+- Log appropriate detail levels
+
+## Authentication
+- Use built-in ASP.NET Core Identity when possible
+- Validate API tokens at startup
+- Handle authentication errors gracefully

@@ -1,0 +1,39 @@
+# Testing Standards
+
+## Test Project Structure
+- Tests in [OutlineMCP.Tests/](mdc:OutlineMCP.Tests/)
+- Focus on: [OutlineServiceTests.cs](mdc:OutlineMCP.Tests/OutlineServiceTests.cs)
+
+## Testing Requirements
+- All business logic must be covered by unit tests (xUnit recommended)
+- Integration tests for key application/infrastructure boundaries
+- Mock dependencies in application tests
+- Use FluentAssertions for assertions
+- Aim for 80%+ code coverage for Application and Domain layers
+
+## Test Patterns
+```csharp
+[Fact]
+public async Task ToolName_Scenario_ExpectedBehavior()
+{
+    // Arrange
+    var parameters = new Dictionary<string, object>
+    {
+        ["key"] = "value"
+    };
+
+    // Act
+    var result = await _service.ExecuteTool(parameters);
+
+    // Assert
+    Assert.NotNull(result);
+}
+```
+
+## Testing Guidelines
+- Don't skip error case testing
+- Don't use production endpoints in tests
+- Don't ignore edge cases
+- Test parameter validation
+- Test error conditions
+- Verify tool behavior

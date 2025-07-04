@@ -1,0 +1,68 @@
+# CLI Development & Command Execution Rules
+
+## Command Execution Standards
+- **NEVER use && to run two commands on the same line**
+- Execute commands separately for better error handling and debugging
+- Use proper async/await patterns for command execution
+- Always handle command failures gracefully
+
+```csharp
+// ❌ BAD - Don't chain commands
+Process.Start("cmd", "/c git add . && git commit -m 'message'");
+
+// ✅ GOOD - Execute separately
+await ExecuteCommandAsync("git", "add .");
+await ExecuteCommandAsync("git", "commit", "-m", "message");
+```
+
+
+
+## CLI Output Handling
+- Capture both stdout and stderr separately
+- Provide meaningful error messages to users
+- Log command execution for debugging
+- Use structured logging for better troubleshooting
+
+```csharp
+public async Task<CommandResult> ExecuteCommandAsync(string command, params string[] args)
+{
+    var processInfo = new ProcessStartInfo
+    {
+        FileName = command,
+        Arguments = string.Join(" ", args),
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false
+    };
+
+    using var process = Process.Start(processInfo);
+    var output = await process.StandardOutput.ReadToEndAsync();
+    var error = await process.StandardError.ReadToEndAsync();
+    
+    await process.WaitForExitAsync();
+    
+    return new CommandResult
+    {
+        ExitCode = process.ExitCode,
+        Output = output,
+        Error = error,
+        Success = process.ExitCode == 0
+    };
+}
+```
+
+## Architecture Guidelines
+- **Keep each class in its own file** (no exceptions)
+- Separate command parsing from command execution
+- Use dependency injection for testability
+- Implement proper cancellation token support
+
+## Error Handling
+- Never swallow command execution errors
+- Provide context-specific error messages
+- Include exit codes in error reporting
+- Implement retry logic for transient failures
+
+- Provide context-specific error messages
+- Include exit codes in error reporting
+- Implement retry logic for transient failures

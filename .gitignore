@@ -424,5 +424,4 @@ FodyWeavers.xsd
 appsettings.Development.json
 appsettings.Production.json
 
-# Cursor rules
-.cursor/
+

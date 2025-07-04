@@ -1,0 +1,30 @@
+# C# Coding Standards
+
+## General Rules
+- Use Microsoft C# Coding Conventions
+- Indentation: 4 spaces
+- Use nullable reference types (`#nullable enable`)
+- Use async/await throughout
+- Use dependency injection for all external services
+
+## Code Style
+- Prefer explicit over implicit logic
+- Use `using` statements for resource management
+- Properly dispose of resources
+- Handle connection cleanup
+
+## Async Patterns
+```csharp
+// Always use async/await properly
+public async Task<string> ExecuteToolAsync(ToolCallParams parameters)
+{
+    using var response = await _httpClient.PostAsJsonAsync(endpoint, data);
+    return await response.Content.ReadAsStringAsync();
+}
+```
+
+## Error Handling
+- Don't swallow exceptions
+- Always provide meaningful error messages
+- Use appropriate error types
+- Validate all inputs with Data Annotations or FluentValidation

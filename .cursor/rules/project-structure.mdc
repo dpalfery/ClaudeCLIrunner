@@ -1,0 +1,24 @@
+# Project Structure & Organization
+
+## File Structure
+- Keep each class in its own file
+- Group related files by feature/domain in folders
+- Each project should have its own folder in the root where the csproj lives and all project related files are
+- Do not use src in C# projects in the folder structure
+
+## Architecture Rules
+- Domain has no dependencies
+- Application depends only on Domain
+- Infrastructure depends on Application and Domain
+- API depends on Application, Infrastructure, and Domain
+- Business logic goes only in Application
+- Infrastructure contains EF Core, external APIs, implementation details
+- API contains only presentation and configuration logic
+
+## Naming Conventions
+- Classes & interfaces: PascalCase (OrderService, ICustomerRepository)
+- Methods & properties: PascalCase
+- Parameters & local variables: camelCase
+- Constants: PascalCase or UPPER_SNAKE_CASE
+- Namespaces: Follow folder structure
+- Async methods: Use Async suffix

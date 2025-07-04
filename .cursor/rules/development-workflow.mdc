@@ -1,0 +1,33 @@
+# Development Workflow
+
+## Pull Request Guidelines
+- Target the develop branch by default
+- Use descriptive PR titles and summaries
+- Reference related issues with #issue-number
+- Every PR must include:
+  - Summary of changes
+  - Unit/integration tests for new/updated features
+  - Updates to documentation (if API surface changes)
+- Ensure build passes and tests succeed before review
+
+## Dependency Management
+- Use NuGet for all dependencies
+- Keep dependencies up to date
+- Avoid unnecessary packages
+- All new dependencies must be reviewed
+
+## Documentation Requirements
+- Keep [README.md](mdc:README.md) up to date
+- All public APIs must include XML doc comments
+- Add/Update OpenAPI/Swagger documentation for endpoints
+
+## Getting Started
+1. Clone repository
+2. Copy `appsettings.json.template` to `appsettings.json`
+3. Set required environment variables
+4. Run `dotnet build`
+5. Run `dotnet test` to verify setup
+
+## Known Limitations
+- Some legacy modules may not conform to latest architecture
+- Multi-tenancy and distributed transactions not fully implemented

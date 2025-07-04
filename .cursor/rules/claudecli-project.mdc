@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+description: "ClaudeCLI Project Specific Guidelines"
+---
+
+# ClaudeCLI Project Guidelines
+
+## Project Structure
+- Main entry point should be clearly identifiable
+- Configuration files should be in a dedicated config directory
+- Commands should be modularized for easy extension
+- Keep core CLI logic separate from command implementations
+
+## Command Architecture
+- Each command should have its own class and file
+- Implement a common command interface for consistency
+- Use proper argument parsing and validation
+- Support help text and usage information for all commands
+
+## Integration with Claude
+- Handle API authentication securely
+- Implement proper error handling for API failures
+- Support async operations for API calls
+- Cache responses when appropriate to reduce API calls
+
+## User Experience
+- Provide clear and helpful error messages
+- Support both interactive and non-interactive modes
+- Implement progress indicators for long-running operations
+- Allow configuration through command-line arguments and config files
+
+## Logging and Debugging
+- Use structured logging throughout the application
+- Include request/response logging for API calls
+- Support different log levels (Debug, Info, Warning, Error)
+- Allow log output to be redirected to files
+
+## Performance Considerations
+- Minimize startup time for CLI responsiveness
+- Use lazy loading for non-essential components
+- Implement proper resource disposal patterns
+- Consider memory usage for large response processing

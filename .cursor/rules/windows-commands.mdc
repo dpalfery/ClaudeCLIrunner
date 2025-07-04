@@ -1,0 +1,39 @@
+---
+globs: *.ps1,*.cs
+description: "Windows Development Guidelines"
+---
+
+
+## Windows-Specific Patterns
+- Use Windows-native path separators (`\`) when dealing with file paths
+- Handle Windows-specific file permissions and attributes
+- Consider Windows service integration for background processes
+- Use Windows Registry for configuration when appropriate
+
+## Git Operations on Windows
+- Handle Windows line endings (CRLF) properly
+- Use Git for Windows or PowerShell Git module
+- Consider Windows Credential Manager for authentication
+- Handle Windows file locking issues gracefully
+
+## File System Operations
+- Use `Path.Combine()` for cross-platform path handling
+- Handle Windows long path limitations (260 characters)
+- Consider Windows file attributes (Hidden, ReadOnly, etc.)
+- Use proper async file operations to avoid blocking
+
+```csharp
+// ✅ GOOD - Windows-aware file operations
+var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MyApp");
+Directory.CreateDirectory(path);
+
+var configFile = Path.Combine(path, "config.json");
+await File.WriteAllTextAsync(configFile, jsonContent);
+```
+
+## Security Considerations
+- Never store credentials in plain text
+- Use Windows Credential Manager or Azure Key Vault
+- Validate all PowerShell scripts before execution
+- Use principle of least privilege for file operations
+- Consider Windows UAC requirements for elevated operations

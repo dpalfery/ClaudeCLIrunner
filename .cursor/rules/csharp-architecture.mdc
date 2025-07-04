@@ -1,0 +1,72 @@
+---
+globs: *.cs
+description: "C# Architecture and Code Organization Guidelines"
+---
+
+# C# Architecture Guidelines
+
+## File Organization
+- **Keep each class in its own file** (no exceptions)
+- Use meaningful file names that match the class name
+- Organize related classes into appropriate namespaces and folders
+
+```csharp
+// ✅ GOOD - Each class in its own file
+// CommandParser.cs
+public class CommandParser 
+{
+    // Implementation
+}
+
+// CommandExecutor.cs  
+public class CommandExecutor
+{
+    // Implementation
+}
+```
+
+## Dependency Injection
+- Use dependency injection for testability
+- Implement proper constructor injection
+- Avoid static dependencies where possible
+
+```csharp
+// ✅ GOOD - Constructor injection
+public class CommandService
+{
+    private readonly ICommandParser _parser;
+    private readonly ILogger _logger;
+    
+    public CommandService(ICommandParser parser, ILogger logger)
+    {
+        _parser = parser;
+        _logger = logger;
+    }
+}
+```
+
+## Async/Await Patterns
+- Use async/await for I/O operations
+- Implement proper cancellation token support
+- Separate command parsing from command execution
+
+```csharp
+// ✅ GOOD - Proper async pattern
+public async Task<CommandResult> ExecuteAsync(string command, CancellationToken cancellationToken = default)
+{
+    try
+    {
+        return await ProcessCommandAsync(command, cancellationToken);
+    }
+    catch (OperationCanceledException)
+    {
+        return CommandResult.Cancelled;
+    }
+}
+```
+
+## Error Handling
+- Use specific exception types
+- Provide meaningful error messages
+- Log errors appropriately
+- Don't swallow exceptions

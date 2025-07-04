@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+description: "General Coding Standards and Best Practices"
+---
+
+# General Coding Standards
+
+## Core Principles
+- **One class per file** - Never put multiple classes in the same file
+- **No command chaining** - Never use && to run two commands on the same line
+- Write clean, readable, and maintainable code
+- Follow consistent naming conventions
+
+## Error Handling
+- Always handle exceptions appropriately
+- Provide meaningful error messages
+- Log errors for debugging purposes
+- Don't suppress or ignore exceptions
+
+## Code Organization
+- Use clear and descriptive names for classes, methods, and variables
+- Keep methods focused on a single responsibility
+- Organize code into logical namespaces and folders
+- Remove unused code and imports
+
+## Documentation
+- Write clear comments for complex logic
+- Document public APIs and interfaces
+- Keep documentation up-to-date with code changes
+- Use XML documentation comments in C#
+
+## Testing
+- Write unit tests for critical functionality
+- Use meaningful test names that describe the scenario
+- Follow arrange-act-assert pattern
+- Test both success and failure cases
+
+## Version Control
+- Make atomic commits with clear messages
+- Don't commit sensitive information
+- Use meaningful branch names
+- Keep commit history clean and readable
