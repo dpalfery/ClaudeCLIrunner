@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using ClaudeCLIRunner.Configuration;
 using ClaudeCLIRunner.Interfaces;
 using ClaudeCLIRunner.Models;
@@ -12,40 +13,59 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
 {
     private readonly ClaudeCliConfig _config;
     private readonly ILogger<ClaudeCliExecutor> _logger;
+    
+    // Security: Regex to validate executable paths - allow alphanumeric, spaces, hyphens, dots, and common path separators
+    // Accept both Windows executables (.exe, .bat, .cmd, .ps1) and Unix executables (no extension)
+    private static readonly Regex ExecutablePathRegex = new Regex(@"^[a-zA-Z0-9\s\-\.\\/:\\]+(\.(exe|bat|cmd|ps1))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    
+    // Security: Maximum lengths for input validation
+    private const int MaxTitleLength = 1000;
+    private const int MaxDescriptionLength = 50000;
+    private const int MaxBranchNameLength = 255;
 
     public ClaudeCliExecutor(IOptions<ClaudeCliConfig> config, ILogger<ClaudeCliExecutor> logger)
     {
         _config = config.Value;
         _logger = logger;
+        
+        // Security: Validate executable path at startup
+        ValidateExecutablePath(_config.ClaudeCodeCliPath);
     }
 
     public async Task<ClaudeCliResult> ExecuteAsync(WorkItem workItem, CancellationToken cancellationToken)
     {
+        // Security: Validate input before processing - do this outside try-catch so validation exceptions bubble up
+        ValidateWorkItem(workItem);
+        
         var stopwatch = Stopwatch.StartNew();
         var result = new ClaudeCliResult();
 
         try
         {
-            _logger.LogInformation("Starting Claude CLI for work item {WorkItemId}: {Title}", 
-                workItem.Id, workItem.Title);
+            _logger.LogInformation("Starting Claude CLI for work item {WorkItemId}", workItem.Id);
 
-            var arguments = BuildArguments(workItem);
+            var arguments = BuildSecureArguments(workItem);
             var processInfo = new ProcessStartInfo
             {
                 FileName = _config.ClaudeCodeCliPath,
-                Arguments = arguments,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(_config.ClaudeCodeCliPath)
             };
+            
+            // Security: Add arguments individually to prevent command injection
+            foreach (var arg in arguments)
+            {
+                processInfo.ArgumentList.Add(arg);
+            }
 
-            // Set environment variables for MCP integration
-            processInfo.Environment["MCP_ENDPOINT"] = _config.McpEndpoint;
-            processInfo.Environment["AZURE_DEVOPS_ORG"] = _config.AzureDevOpsOrg;
-            processInfo.Environment["AZURE_DEVOPS_PROJECT"] = _config.Project;
-            processInfo.Environment["AZURE_DEVOPS_REPO"] = _config.Repo;
+            // Security: Sanitize environment variables before setting
+            SetSecureEnvironmentVariable(processInfo, "MCP_ENDPOINT", _config.McpEndpoint);
+            SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_ORG", _config.AzureDevOpsOrg);
+            SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_PROJECT", _config.Project);
+            SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_REPO", _config.Repo);
 
             using var process = new Process { StartInfo = processInfo };
             
@@ -57,7 +77,8 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     outputBuilder.AppendLine(e.Data);
-                    _logger.LogDebug("CLI Output: {Output}", e.Data);
+                    // Security: Only log at debug level and sanitize output
+                    _logger.LogDebug("CLI Output: {Output}", SanitizeLogOutput(e.Data));
                 }
             };
 
@@ -66,7 +87,8 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     errorBuilder.AppendLine(e.Data);
-                    _logger.LogWarning("CLI Error: {Error}", e.Data);
+                    // Security: Only log at debug level and sanitize error output
+                    _logger.LogDebug("CLI Error: {Error}", SanitizeLogOutput(e.Data));
                 }
             };
 
@@ -119,6 +141,169 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
         }
 
         return result;
+    }
+
+    private void ValidateExecutablePath(string executablePath)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            throw new ArgumentException("Executable path cannot be null or empty", nameof(executablePath));
+        }
+        
+        if (!ExecutablePathRegex.IsMatch(executablePath))
+        {
+            throw new ArgumentException($"Invalid executable path format: {executablePath}", nameof(executablePath));
+        }
+        
+        // Security: Check if path tries to escape to restricted areas
+        var fullPath = Path.GetFullPath(executablePath);
+        if (fullPath.Contains(".."))
+        {
+            throw new ArgumentException($"Path traversal detected in executable path: {executablePath}", nameof(executablePath));
+        }
+    }
+    
+    private void ValidateWorkItem(WorkItem workItem)
+    {
+        if (workItem == null)
+        {
+            throw new ArgumentNullException(nameof(workItem));
+        }
+        
+        if (workItem.Id <= 0)
+        {
+            throw new ArgumentException("Work item ID must be positive", nameof(workItem));
+        }
+        
+        if (string.IsNullOrEmpty(workItem.Title))
+        {
+            throw new ArgumentException("Work item title cannot be null or empty", nameof(workItem));
+        }
+        
+        if (workItem.Title.Length > MaxTitleLength)
+        {
+            throw new ArgumentException($"Work item title exceeds maximum length of {MaxTitleLength} characters", nameof(workItem));
+        }
+        
+        if (workItem.Description != null && workItem.Description.Length > MaxDescriptionLength)
+        {
+            throw new ArgumentException($"Work item description exceeds maximum length of {MaxDescriptionLength} characters", nameof(workItem));
+        }
+        
+        if (_config.DefaultBranch.Length > MaxBranchNameLength)
+        {
+            throw new ArgumentException($"Branch name exceeds maximum length of {MaxBranchNameLength} characters");
+        }
+        
+        // Security: Check for potential command injection patterns
+        ValidateInputForCommandInjection(workItem.Title, nameof(workItem.Title));
+        if (!string.IsNullOrEmpty(workItem.Description))
+        {
+            ValidateInputForCommandInjection(workItem.Description, nameof(workItem.Description));
+        }
+        ValidateInputForCommandInjection(_config.DefaultBranch, "DefaultBranch");
+    }
+    
+    private void ValidateInputForCommandInjection(string input, string parameterName)
+    {
+        // Security: Check for common command injection patterns
+        var dangerousPatterns = new[]
+        {
+            "|", "&", ";", "$", "`", "$(", "${", "powershell", "cmd", "bash", "/bin/", "\\bin\\",
+            "rm -", "del ", "format ", "net ", "sc ", "reg ", "wmic ", "certutil"
+        };
+        
+        var lowerInput = input.ToLowerInvariant();
+        foreach (var pattern in dangerousPatterns)
+        {
+            if (lowerInput.Contains(pattern))
+            {
+                _logger.LogWarning("Potential command injection detected in {Parameter}: {Pattern}", parameterName, pattern);
+                throw new ArgumentException($"Input contains potentially dangerous pattern '{pattern}' in {parameterName}", parameterName);
+            }
+        }
+    }
+    
+    private List<string> BuildSecureArguments(WorkItem workItem)
+    {
+        // Security: Use List<string> for proper argument separation instead of concatenated string
+        // This prevents command injection by ensuring each argument is properly escaped by ProcessStartInfo
+        var args = new List<string>
+        {
+            "--work-item-id",
+            workItem.Id.ToString(),
+            "--title",
+            SanitizeArgumentValue(workItem.Title),
+            "--description",
+            SanitizeArgumentValue(workItem.Description ?? string.Empty),
+            "--branch",
+            SanitizeArgumentValue(_config.DefaultBranch)
+        };
+
+        return args;
+    }
+    
+    private string SanitizeArgumentValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+        
+        // Security: Remove or escape potentially dangerous characters
+        // Replace newlines and carriage returns with spaces to prevent argument splitting
+        var sanitized = value.Replace('\n', ' ').Replace('\r', ' ').Replace('\t', ' ');
+        
+        // Remove null characters
+        sanitized = sanitized.Replace('\0', ' ');
+        
+        // Trim whitespace
+        sanitized = sanitized.Trim();
+        
+        return sanitized;
+    }
+
+    private void SetSecureEnvironmentVariable(ProcessStartInfo processInfo, string name, string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            _logger.LogWarning("Environment variable {Name} is null or empty", name);
+            return;
+        }
+        
+        // Security: Validate environment variable values
+        if (value.Length > 2048) // Reasonable limit for environment variables
+        {
+            throw new ArgumentException($"Environment variable {name} value is too long");
+        }
+        
+        // Security: Check for injection patterns in environment variables
+        ValidateInputForCommandInjection(value, $"Environment variable {name}");
+        
+        processInfo.Environment[name] = value;
+    }
+    
+    private string SanitizeLogOutput(string output)
+    {
+        if (string.IsNullOrEmpty(output))
+        {
+            return string.Empty;
+        }
+        
+        // Security: Remove potentially sensitive information from logs
+        var sanitized = output;
+        
+        // Mask common sensitive patterns
+        sanitized = Regex.Replace(sanitized, @"(?i)(token|password|key|secret|pat)[=:\s]+[^\s]*", "$1=***", RegexOptions.IgnoreCase);
+        sanitized = Regex.Replace(sanitized, @"(?i)(bearer\s+)[^\s]*", "$1***", RegexOptions.IgnoreCase);
+        
+        // Truncate very long output to prevent log flooding
+        if (sanitized.Length > 500)
+        {
+            sanitized = sanitized.Substring(0, 500) + "... [truncated]";
+        }
+        
+        return sanitized;
     }
 
     private string BuildArguments(WorkItem workItem)
