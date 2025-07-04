@@ -416,3 +416,13 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# JetBrains Rider
+*.sln.iml
+
+# Environment-specific config files
+appsettings.Development.json
+appsettings.Production.json
+
+# Cursor rules
+.cursor/
