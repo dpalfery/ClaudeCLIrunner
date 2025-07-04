@@ -28,6 +28,9 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
         _config = config.Value;
         _logger = logger;
         
+        // Security: Validate configuration at startup
+        ValidateConfiguration(_config);
+        
         // Security: Validate executable path at startup
         ValidateExecutablePath(_config.ClaudeCodeCliPath);
     }
@@ -66,6 +69,13 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
             SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_ORG", _config.AzureDevOpsOrg);
             SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_PROJECT", _config.Project);
             SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_REPO", _config.Repo);
+            
+            // Security: Handle PAT from environment variable (preferred) or config (deprecated)
+            var pat = Environment.GetEnvironmentVariable("CLAUDECLI_AZURE_DEVOPS_PAT") ?? _config.AzureDevOpsPat;
+            if (!string.IsNullOrEmpty(pat))
+            {
+                SetSecureEnvironmentVariable(processInfo, "AZURE_DEVOPS_PAT", pat);
+            }
 
             using var process = new Process { StartInfo = processInfo };
             
@@ -143,6 +153,41 @@ public class ClaudeCliExecutor : IClaudeCliExecutor
         return result;
     }
 
+    private void ValidateConfiguration(ClaudeCliConfig config)
+    {
+        // Security: Validate critical security settings
+        if (config.RequireHttps && !config.McpEndpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("HTTPS is required for MCP endpoint when RequireHttps is enabled");
+        }
+        
+        if (config.MaxConcurrentProcesses < 1 || config.MaxConcurrentProcesses > 10)
+        {
+            throw new ArgumentException("MaxConcurrentProcesses must be between 1 and 10");
+        }
+        
+        if (config.WebhookPort < 1024 || config.WebhookPort > 65535)
+        {
+            throw new ArgumentException("WebhookPort must be between 1024 and 65535");
+        }
+        
+        // Security: Warn about deprecated PAT usage
+        if (!string.IsNullOrEmpty(config.AzureDevOpsPat))
+        {
+            _logger.LogWarning("AzureDevOpsPat in configuration is deprecated for security reasons. Use environment variable CLAUDECLI_AZURE_DEVOPS_PAT instead.");
+        }
+        
+        // Security: Validate audit logging settings
+        if (config.EnableAuditLogging && !string.IsNullOrEmpty(config.AuditLogPath))
+        {
+            var auditDir = Path.GetDirectoryName(config.AuditLogPath);
+            if (!string.IsNullOrEmpty(auditDir) && !Directory.Exists(auditDir))
+            {
+                throw new ArgumentException($"Audit log directory does not exist: {auditDir}");
+            }
+        }
+    }
+    
     private void ValidateExecutablePath(string executablePath)
     {
         if (string.IsNullOrWhiteSpace(executablePath))

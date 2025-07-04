@@ -14,8 +14,21 @@ This repository now contains a complete implementation of the Claude CLI Runner 
 - ✅ **Configuration**: JSON-based configuration with environment variable overrides
 - ✅ **Logging**: Structured logging with configurable levels
 - ✅ **Mock Testing**: Includes mock work item service for testing
+- ✅ **Security Features**: Comprehensive security controls and input validation
+
+### 🔒 Security Highlights
+- **Command Injection Prevention**: All user inputs validated against dangerous patterns
+- **Secure Credential Management**: Environment variable support for sensitive data
+- **Input Validation**: Length limits and pattern checking for all work item data
+- **Audit Logging**: Optional security audit trail
+- **HTTPS Enforcement**: Configurable HTTPS requirement for external endpoints
+- **Process Isolation**: Secure process execution with timeout controls
+
+📖 **See [Security Guide](docs/SECURITY.md) for complete security documentation**
 
 ### Quick Start
+
+⚠️ **Security First**: Before running, review the [Security Guide](docs/SECURITY.md) for secure configuration recommendations.
 
 1. **Configure the application** by editing `appsettings.json`:
    ```json
@@ -25,17 +38,33 @@ This repository now contains a complete implementation of the Claude CLI Runner 
        "McpEndpoint": "https://your-mcp-server.com",
        "AzureDevOpsOrg": "yourorg",
        "Project": "yourproject",
-       "Repo": "yourrepo"
+       "Repo": "yourrepo",
+       "RequireHttps": true,
+       "EnableAuditLogging": true
      }
    }
    ```
 
-2. **Run the demo**:
+2. **Set up secure credentials** (DO NOT put credentials in config files):
+   ```bash
+   # Windows
+   set CLAUDECLI_AZURE_DEVOPS_PAT=your-pat-here
+   
+   # Linux/Mac  
+   export CLAUDECLI_AZURE_DEVOPS_PAT=your-pat-here
+   ```
+
+3. **Run security audit** (recommended):
+   ```powershell
+   .\Scripts\Security-Audit.ps1 -IncludeNuGetAudit -CheckFilePermissions
+   ```
+
+4. **Run the demo**:
    ```powershell
    .\Demo-ClaudeRunner.ps1
    ```
 
-3. **Deploy as Windows Service**:
+5. **Deploy as Windows Service**:
    ```powershell
    .\Scripts\Deploy-AsService.ps1 -InstallPath "C:\Services\ClaudeCLI"
    ```
@@ -47,6 +76,36 @@ This repository now contains a complete implementation of the Claude CLI Runner 
 - `/Interfaces` - Service interfaces
 - `/Scripts` - Deployment and testing scripts
 - `/Tests` - Unit tests with xUnit and Moq
+
+### 🔐 Security & Maintenance
+
+#### Security Scanning
+```bash
+# Check for vulnerable NuGet packages
+dotnet list package --vulnerable
+
+# Run comprehensive security audit
+.\Scripts\Security-Audit.ps1 -IncludeNuGetAudit -CheckFilePermissions
+
+# Update vulnerable packages
+dotnet add package <package-name>
+```
+
+#### Security Best Practices
+- **Never commit credentials** to source control
+- **Use environment variables** for sensitive configuration
+- **Enable HTTPS** for all external endpoints (`RequireHttps: true`)
+- **Enable audit logging** for security monitoring (`EnableAuditLogging: true`)
+- **Review security logs** regularly
+- **Keep dependencies updated** to address security vulnerabilities
+
+#### Monitoring & Alerts
+- Monitor audit logs for suspicious activity
+- Set up alerts for validation failures
+- Track process execution times and failures
+- Review credential access patterns
+
+For complete security guidance, see [docs/SECURITY.md](docs/SECURITY.md).
 
 ### Next Steps
 See [IMPLEMENTATION.md](IMPLEMENTATION.md) for detailed implementation guide and extension points.
